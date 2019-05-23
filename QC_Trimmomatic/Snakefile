@@ -1,0 +1,117 @@
+# Workflow for FastQC, MultiQC, and adapter trimming using Trimmomatic.
+
+# Environment: QC_Trimmomatic
+
+configfile: "QC_Trimmomatic.config.json"
+
+ruleorder: fastqc_analysis > multiqc > trimmomatic > fastqc_analysis_trimmomatic_trimmed_paired > multiqc_trimmed_paired
+
+rule all:
+    input:
+        expand(config["FastQC_File_Output_Directory"]+"{sample}_1_fastqc.zip", sample=config["Sample_Names"]),
+        expand(config["FastQC_File_Output_Directory"]+"{sample}_1_fastqc.html", sample=config["Sample_Names"]),
+        expand(config["FastQC_File_Output_Directory"]+"{sample}_2_fastqc.zip", sample=config["Sample_Names"]),
+        expand(config["FastQC_File_Output_Directory"]+"{sample}_2_fastqc.html", sample=config["Sample_Names"]),
+        (config["FastQC_File_Output_Directory"]+"multiqc_report.html"),
+        expand(config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic_trimmed_paired_1.fastq", sample=config["Sample_Names"]),
+        expand(config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic_trimmed_unpaired_1.fastq", sample=config["Sample_Names"]),
+        expand(config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic_trimmed_paired_2.fastq", sample=config["Sample_Names"]),
+        expand(config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic_trimmed_unpaired_2.fastq", sample=config["Sample_Names"]),
+        expand(config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic.log", sample=config["Sample_Names"]),
+        expand(config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic_trimmed_paired_1_fastqc.html", sample=config["Sample_Names"]),
+        expand(config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic_trimmed_paired_1_fastqc.zip", sample=config["Sample_Names"]),
+        expand(config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic_trimmed_paired_2_fastqc.html", sample=config["Sample_Names"]),
+        expand(config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic_trimmed_paired_2_fastqc.zip", sample=config["Sample_Names"]),
+        (config["Trimmed_FastQC_File_Output_Directory"]+"multiqc_report.html")
+
+rule fastqc_analysis:
+    #NOTE: need to change the config "{}_Sample_Names" for the needed tissue
+    input:
+        FASTQ1 = lambda wildcards: (config["Directory_to_FASTQ_Files"]+config["Prostate_Sample_Names"][wildcards.sample]["File_ID"]+"/"+config["Prostate_Sample_Names"][wildcards.sample]["File_Name"]+"_1.fastq"),
+        FASTQ2 = lambda wildcards: (config["Directory_to_FASTQ_Files"]+config["Prostate_Sample_Names"][wildcards.sample]["File_ID"]+"/"+config["Prostate_Sample_Names"][wildcards.sample]["File_Name"]+"_2.fastq")
+    output:
+        FASTQ1_Zip = (config["FastQC_File_Output_Directory"]+"{sample}_1_fastqc.zip"),
+        FASTQ1_Html = (config["FastQC_File_Output_Directory"]+"{sample}_1_fastqc.html"),
+        FASTQ2_Zip = (config["FastQC_File_Output_Directory"]+"{sample}_2_fastqc.zip"),
+        FASTQ2_Html = (config["FastQC_File_Output_Directory"]+"{sample}_2_fastqc.html")
+    params:
+        fastqc_directory = config["FastQC_File_Output_Directory"],
+        input_prefix = lambda wildcards: config["Prostate_Sample_Names"][wildcards.sample]["File_Name"]
+    priority: 100
+    shell:
+    	"""
+        fastqc -o {params.fastqc_directory} {input.FASTQ1};
+        fastqc -o {params.fastqc_directory} {input.FASTQ2};
+        mv {params.fastqc_directory}{params.input_prefix}_1_fastqc.zip {output.FASTQ1_Zip};
+        mv {params.fastqc_directory}{params.input_prefix}_1_fastqc.html {output.FASTQ1_Html};
+        mv {params.fastqc_directory}{params.input_prefix}_2_fastqc.zip {output.FASTQ2_Zip};
+        mv {params.fastqc_directory}{params.input_prefix}_2_fastqc.html {output.FASTQ2_Html}
+        """
+
+rule multiqc:
+    input:
+    output:
+        (config["FastQC_File_Output_Directory"]+"multiqc_report.html")
+    params:
+        fastqc_directory = config["FastQC_File_Output_Directory"]
+    priority: 75
+    shell:
+        "multiqc {params.fastqc_directory}*_1_fastqc.zip --outdir {params.fastqc_directory} --interactive --verbose"
+
+rule trimmomatic:
+    #NOTE: need to change the config "{}_Sample_Names" for the needed tissue
+    input:
+        FASTQ1 = lambda wildcards: (config["Directory_to_FASTQ_Files"]+config["Prostate_Sample_Names"][wildcards.sample]["File_ID"]+"/"+config["Prostate_Sample_Names"][wildcards.sample]["File_Name"]+"_1.fastq"),
+        FASTQ2 = lambda wildcards: (config["Directory_to_FASTQ_Files"]+config["Prostate_Sample_Names"][wildcards.sample]["File_ID"]+"/"+config["Prostate_Sample_Names"][wildcards.sample]["File_Name"]+"_2.fastq"),
+        Adapter_FASTA = config["Adapter_FASTA"]
+    output:
+        Paired_1 = (config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic_trimmed_paired_1.fastq"),
+        Unpaired_1 = (config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic_trimmed_unpaired_1.fastq"),
+        Paired_2 = (config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic_trimmed_paired_2.fastq"),
+        Unpaired_2 = (config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic_trimmed_unpaired_2.fastq"),
+        Log_File = (config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic.log")
+    params:
+        threads = 4,
+        seed_mismatches = 2,
+        palindrome_clip_threshold = 30,
+        simple_clip_threshold = 10,
+        leading = 10,
+        trailing = 10,
+        winsize = 4,
+        winqual = 15,
+        minlen = 48
+    priority: 50
+    shell:
+        """
+        trimmomatic -Xmx2048m PE -threads {params.threads} -phred33 -trimlog {output.Log_File} \
+        {input.FASTQ1} {input.FASTQ2} {output.Paired_1} {output.Unpaired_1} \
+        {output.Paired_2} {output.Unpaired_2} \
+        ILLUMINACLIP:{input.Adapter_FASTA}:{params.seed_mismatches}:{params.palindrome_clip_threshold}:{params.simple_clip_threshold} \
+        LEADING:{params.leading} TRAILING:{params.trailing} \
+        SLIDINGWINDOW:{params.winsize}:{params.winqual} MINLEN:{params.minlen}
+        """
+
+rule fastqc_analysis_trimmomatic_trimmed_paired:
+    input:
+        FASTQ1 = (config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic_trimmed_paired_1.fastq"),
+        FASTQ2 = (config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic_trimmed_paired_2.fastq")
+    output:
+        FASTQ1_Html = (config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic_trimmed_paired_1_fastqc.html"),
+        FASTQ1_Zip = (config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic_trimmed_paired_1_fastqc.zip"),
+        FASTQ2_Html = (config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic_trimmed_paired_2_fastqc.html"),
+        FASTQ2_Zip = (config["Trimmed_FastQC_File_Output_Directory"]+"{sample}_trimmomatic_trimmed_paired_2_fastqc.zip")
+    params:
+        fastqc_directory = config["Trimmed_FastQC_File_Output_Directory"]
+    priority: 25
+    shell:
+        "fastqc -o {params.fastqc_directory} {input.FASTQ1} {input.FASTQ2}"
+
+rule multiqc_trimmed_paired:
+    input:
+    output:
+        (config["Trimmed_FastQC_File_Output_Directory"]+"multiqc_report.html")
+    params:
+        fastqc_directory = config["Trimmed_FastQC_File_Output_Directory"]
+    priority: 0
+    shell:
+        "multiqc {params.fastqc_directory}*trimmomatic*_fastqc.zip --outdir {params.fastqc_directory} --interactive --verbose"
