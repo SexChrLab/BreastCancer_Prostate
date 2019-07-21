@@ -76,26 +76,26 @@ This rule runs multiqc to create a multiqc report.
 `multiqc {output_directory}*_fastqc.zip --outdir {output_directory} --interactive --verbose`
 
 #### Trimmomatic
-This rule will run trimmomatic on the fastq files to get trimmed and paired output files.
+For running Trimmomatic, we using the following parameters:
 `SPECIFIED PARAMETERS:
-        			threads = 4,
-        			seed_mismatches = 2,
-        			palindrome_clip_threshold = 30,
-        			simple_clip_threshold = 10,
-        			leading = 10,
-        			trailing = 10,
-        			winsize = 4,
-        			winqual = 15,
-        			minlen = 48
-				COMMAND:
-        			trimmomatic PE -threads {params.threads} -phred33 -trimlog 
-        			{output.Log_File} \
-        			{FASTQ1} {FASTQ2} {output.Paired_1} {output.Unpaired_1} \
-        			{output.Paired_2} {output.Unpaired_2} \
-        			ILLUMINACLIP:{input.Adapter_FASTA}:{params.seed_mismatches}:
-        			{params.palindrome_clip_threshold}:{params.simple_clip_threshold} \
-        			LEADING:{params.leading} TRAILING:{params.trailing} \
-        			SLIDINGWINDOW:{params.winsize}:{params.winqual} MINLEN:{params.minlen}`
+	threads = 4,
+	seed_mismatches = 2,
+	palindrome_clip_threshold = 30,
+	simple_clip_threshold = 10,
+	leading = 10,
+	trailing = 10,
+	winsize = 4,
+	winqual = 15,
+	minlen = 48`
+	
+This rule will run trimmomatic on the fastq files to get trimmed and paired output files.
+`trimmomatic PE -threads {params.threads} -phred33 -trimlog {output.Log_File} \
+{FASTQ1} {FASTQ2} {output.Paired_1} {output.Unpaired_1} \
+{output.Paired_2} {output.Unpaired_2} \
+ILLUMINACLIP:{input.Adapter_FASTA}:{params.seed_mismatches}:
+{params.palindrome_clip_threshold}:{params.simple_clip_threshold} \
+LEADING:{params.leading} TRAILING:{params.trailing} \
+SLIDINGWINDOW:{params.winsize}:{params.winqual} MINLEN:{params.minlen}`
 
 #### FastQC
 This rule will run the second pass of fastqc analysis using the trimmed and paired fastq files generated after running trimmomatic.
