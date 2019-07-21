@@ -13,8 +13,10 @@ First, we installed Anaconda or Miniconda. We referred  Conda's documentation fo
 ### Created the environment
 We named this environment 'QC_Trimmomatic'.
 
-Create conda environment called `QC_Trimmomatic`: \
+Create conda environment called `QC_Trimmomatic`:
+```
 `conda env create --name QC_Trimmomatic --file QC_Trimmomatic_environment.yaml`
+```
 
 We activated the environment when running scripts or commands and deactivated the environment when we were done. 
 
@@ -69,11 +71,15 @@ We created a Snakefile that ran FastQC, MultiQC, Trimmomatic, then FastQC and Mu
 
 #### FastQC
 This rule will run the first pass of fastqc analysis.
+```
 `fastqc -o {output_directory} {FASTQ1} {FASTQ2}`
+```
 
 #### MultiQC
 This rule runs multiqc to create a multiqc report.
+```
 `multiqc {output_directory}*_fastqc.zip --outdir {output_directory} --interactive --verbose`
+```
 
 #### Trimmomatic
 For running Trimmomatic, we using the following parameters:
@@ -103,15 +109,20 @@ SLIDINGWINDOW:{params.winsize}:{params.winqual} MINLEN:{params.minlen}`
 
 #### FastQC
 This rule will run the second pass of fastqc analysis using the trimmed and paired fastq files generated after running trimmomatic.
+```
 `fastqc -o {output_directory} {FASTQ1} {FASTQ2}`
+```
 
 #### MultiQC
-This rule runs multiqc to create a multiqc report for the trimmed and paired fastq files generated after running trimmomatic.	
+This rule runs multiqc to create a multiqc report for the trimmed and paired fastq files generated after running trimmomatic.
+```
 `multiqc {output_directory}*_fastqc.zip --outdir {output_directory} --interactive --verbose`
+```
           
 ### Run the script
 With our server, we chose to use an sbatch script to run PopInf. This script is provided in this folder.
-
+```
 `sbatch run_QC_Trimmomatic_snakefile.sh`
+```
          
 
